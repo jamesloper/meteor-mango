@@ -4,7 +4,6 @@ const {EJSON} = require('meteor/ejson');
 const {LocalCollection} = require('meteor/minimongo');
 const EventEmitter = require('events');
 const {requireUpdate} = require('./mongo-validate');
-const traverse = require('./mongo-traverse');
 
 class Mango {
 	constructor(collectionName, {toEmbedded, triggerFields}) {

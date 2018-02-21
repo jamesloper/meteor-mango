@@ -4,21 +4,24 @@ To add to your project, just run `meteor npm install --save meteor-mango`
 
 ### Relational Example
 
-In this example, we update `Members` when a `Group`'s embedded doc is changed.
+In this example, we update `Members` when a `Group` is changed.
 
 ```javascript
 import Mango from 'meteor-mango';
 import {pick, isEqual} from 'underscore';
 
-const GROUPS_SCHEMA = {name: String, addedOn: Date};
-const MEMBERS_SCHEMA = {username: String, groups: [{_id: String, name: String}]};
+// Define schemas for two collections
+const GROUPS_SCHEMA = {_id: String, name: String, addedOn: Date};
+const MEMBERS_SCHEMA = {_id: String, username: String, groups: [{_id: String, name: String}]};
 
+// Create two sexy mangos
 const Groups = new Mango('Groups', {
     schema: GROUPS_SCHEMA,
     toEmbedded: (newDoc) => pick(newDoc, '_id', 'name'),
 });
 const Members = new Mango('Members', {schema: MEMBERS_SCHEMA});
 
+// Attach autorun functions to Groups
 Groups.autorun({
     onChange(id, embeddedDoc) {
         Members.update({'groups._id': id}, {$set: {'groups.$': embeddedDoc}}, {multi:true});
@@ -29,10 +32,10 @@ Groups.autorun({
 });
 ```
 
-When we run this code, the groups update will automatically trigger the `onChange` event declared in `autorun`
+Because you configured a toEmbedded function and attached an autorun, the update on line 3 will trigger the `onChange` event declared in `autorun`. That will make sure your Members embeds are properly kept up to date!
 
 ```javascript
 let {id, embeddedDoc} = Groups.insert({name: 'Foreskin', createdOn: new Date()});
-let {doc} = Members.insert({name: 'Bob', groups: [embeddedDoc]});
-Groups.update(groupId, {$set: {'name': 'Threeskin'}});
+Members.insert({name: 'Bob', groups: [embeddedDoc]});
+Groups.update(id, {$set: {'name': 'Threeskin'}});
 ```
