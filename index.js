@@ -1,35 +1,30 @@
-const {Random} = require('meteor/random');
 const {Mongo} = require('meteor/mongo');
-const {check, Match} = require('meteor/check');
 const {keys} = require('underscore');
 const {EJSON} = require('meteor/ejson');
 const {LocalCollection} = require('meteor/minimongo');
 const EventEmitter = require('events');
 const {requireUpdate} = require('./mongo-validate');
+const traverse = require('./mongo-traverse');
 
 class Mango {
-	constructor({collectionName, schema, toEmbedded}) {
+	constructor(collectionName, {toEmbedded, triggerFields, comparisonFn}) {
 		this.collection = new Mongo.Collection(collectionName);
-		this.schema = Match.Optional({
-			...schema,
-			_id: Match.Optional(String),
-		});
 		this.findOne = this.collection.findOne;
 		this.find = this.collection.find;
-		this.emitter = new EventEmitter();
-		this.onBeforeUpdate = (fn) => this.emitter.addListener('beforeUpdate', fn);
-		this.onAfterUpdate = (fn) => this.emitter.addListener('afterUpdate', fn);
-		this.onBeforeInsert = (fn) => this.emitter.addListener('beforeInsert', fn);
-		this.onAfterInsert = (fn) => this.emitter.addListener('afterInsert', fn);
-		this.onBeforeRemove = (fn) => this.emitter.addListener('beforeRemove', fn);
-		this.onAfterRemove = (fn) => this.emitter.addListener('afterRemove', fn);
+		this._emitter = new EventEmitter();
+		this.onBeforeUpdate = (fn) => this._emitter.addListener('beforeUpdate', fn);
+		this.onAfterUpdate = (fn) => this._emitter.addListener('afterUpdate', fn);
+		this.onBeforeInsert = (fn) => this._emitter.addListener('beforeInsert', fn);
+		this.onAfterInsert = (fn) => this._emitter.addListener('afterInsert', fn);
+		this.onBeforeRemove = (fn) => this._emitter.addListener('beforeRemove', fn);
+		this.onAfterRemove = (fn) => this._emitter.addListener('afterRemove', fn);
 		this.toEmbedded = toEmbedded;
+		this.triggerFields = triggerFields || [];
 	}
 
 	simulateUpdate(doc, update) {
 		let clonedDoc = EJSON.clone(doc);
 		LocalCollection._modify(doc, update);
-		check(clonedDoc, this.schema);
 		return clonedDoc;
 	}
 
@@ -38,50 +33,60 @@ class Mango {
 
 		const docs = this.collection.find(query, {limit: params.multi ? null : 1}).map(oldDoc => {
 			let newDoc = this.simulateUpdate(oldDoc, update);
-			console.log('old doc:', oldDoc);
-			console.log('new doc:', newDoc);
 			return {oldDoc, newDoc, update};
 		});
 
-		let count = 1;
 		if (docs.length === 0 && params.upsert) { // handle an upsert
-			let doc = this.simulateUpdate(query, update);
-			this.insert(doc);
-		} else {
-			docs.forEach(r => this.emitter.emit('beforeUpdate', r));
-			count = this.collection.update(query, update, params);
-			docs.forEach(r => this.emitter.emit('afterUpdate', r));
+			this.insert(this.simulateUpdate(query, update));
+			return 1;
 		}
+
+		docs.forEach(r => this._emitter.emit('beforeUpdate', r));
+		let count = this.collection.update(query, update, params);
+		docs.forEach(r => {
+			this._emitter.emit('afterUpdate', r);
+
+			// Trigger relational update if any of the trigger fields's value has changed
+			let triggersRelationalUpdate = this.triggerFields.find(field => {
+				let oldValue = traverse(r.oldDoc, field);
+				let newValue = traverse(r.newDoc, field);
+				return EJSON.equals(oldValue, newValue);
+			});
+			if (triggersRelationalUpdate) {
+				let embedded = this.toEmbedded(r.newDoc);
+				this._emitter.emit('onChange', r.newDoc._id, embedded);
+			}
+		});
 		return count;
 	}
 
 	insert(doc) {
-		check(doc, this.schema);
-		this.emitter.emit('onBeforeInsert', doc);
+		if (!doc._id) doc._id = this.collection._makeNewID();
+
+		this._emitter.emit('onBeforeInsert', doc);
 		const id = this.collection.insert(doc);
-		this.emitter.emit('onAfterInsert', doc);
-		return id;
+		this._emitter.emit('onAfterInsert', doc);
+
+		let res = {id, doc};
+		if (this.toEmbedded) res.embedded = this.toEmbedded(doc);
+
+		return res;
 	}
 
 	remove(query) {
 		const docIds = this.collection.find(query, {fields: {_id: 1}}).map(r => r._id);
-		docIds.forEach(id => this.emitter.emit('onBeforeRemove', id));
+		docIds.forEach(id => this._emitter.emit('onBeforeRemove', id));
 		const count = this.collection.remove(query);
-		docIds.forEach(id => this.emitter.emit('onAfterRemove', id));
+		docIds.forEach(id => this._emitter.emit('onAfterRemove', id));
 		return count;
 	}
 
-	// collectionToUpdate: mango instance that has the embedded document
-	// query: query to the collectionToUpdate to get the documents that need updating
-	// update: update to run on the collectionToUpdate
-	autoSync(collectionToUpdate, observeFields) {
-		if (this.toEmbedded) throw new Meteor.Error(500, 'Attempted to call autoSync on a collection that has no #toEmbedded function');
+	autorun({onChange, onRemove}) {
+		if (!this.toEmbedded) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no #toEmbedded function');
+		if (!this.triggerFields.length) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no trigger fields');
 
-		this.onAfterUpdate(({newDoc, oldDoc}) => {
-			let update = {};
-			keys(embedFields);
-			collectionToUpdate.update(query, update);
-		});
+		this._emitter.addListener('onChange', onChange);
+		this.onAfterRemove(onRemove);
 	}
 }
 
