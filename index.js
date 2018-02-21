@@ -1,5 +1,5 @@
 const {Mongo} = require('meteor/mongo');
-const {keys} = require('underscore');
+const {extend} = require('underscore');
 const {EJSON} = require('meteor/ejson');
 const {LocalCollection} = require('meteor/minimongo');
 const EventEmitter = require('events');
@@ -7,7 +7,7 @@ const {requireUpdate} = require('./mongo-validate');
 const traverse = require('./mongo-traverse');
 
 class Mango {
-	constructor(collectionName, {toEmbedded, triggerFields, comparisonFn}) {
+	constructor(collectionName, {toEmbedded, triggerFields}) {
 		this.collection = new Mongo.Collection(collectionName);
 		this.findOne = this.collection.findOne;
 		this.find = this.collection.find;
@@ -33,7 +33,12 @@ class Mango {
 
 		const docs = this.collection.find(query, {limit: params.multi ? null : 1}).map(oldDoc => {
 			let newDoc = this.simulateUpdate(oldDoc, update);
-			return {oldDoc, newDoc, update};
+			let res = {oldDoc, newDoc, update};
+			if (this.toEmbedded) extend(res, {
+				oldEmbeddedDoc: this.toEmbedded(r.oldDoc),
+				newEmbeddedDoc: this.toEmbedded(newDoc),
+			});
+			return res;
 		});
 
 		if (docs.length === 0 && params.upsert) { // handle an upsert
@@ -47,14 +52,8 @@ class Mango {
 			this._emitter.emit('afterUpdate', r);
 
 			// Trigger relational update if any of the trigger fields's value has changed
-			let triggersRelationalUpdate = this.triggerFields.find(field => {
-				let oldValue = traverse(r.oldDoc, field);
-				let newValue = traverse(r.newDoc, field);
-				return EJSON.equals(oldValue, newValue);
-			});
-			if (triggersRelationalUpdate) {
-				let embeddedDoc = this.toEmbedded(r.newDoc);
-				this._emitter.emit('onChange', r.newDoc._id, embeddedDoc);
+			if (this.toEmbededd && !EJSON.equals(r.oldEmbeddedDoc, r.newEmbeddedDoc)) {
+				this._emitter.emit('onChange', r.newDoc._id, r.newEmbeddedDoc);
 			}
 		});
 		return count;

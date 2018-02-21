@@ -1,4 +1,4 @@
-**Meteor Mango** is a simple, lightweight alternative to collection2, simple-schema, and collection-hooks, and can auto sync relational data. Say hello to a more maintainable codebase. Collection-hooks can cause spaghetti code, so don't overuse them!
+**Meteor Mango** is a simple, lightweight alternative to collection-hooks and can auto sync relational data. Say hello to a more maintainable codebase. However collection-hooks can cause spaghetti code, so don't overuse them!
 
 ### Installation
 To add to your project, just run `meteor npm install --save meteor-mango`
@@ -16,7 +16,7 @@ Groups.insert({name: 'Dinosaur Eating Club'});
 
 ### Relational Example
 
-In this example, we trigger a sync upon changes to the Artist's `name`. Note that if `name` was an object, and a sub field changed, this works as well. The change detection function is `EJSON.equals`.
+In this example, we trigger a sync upon changes to the Group's `name`.
 
 ```javascript
 import Mango from 'meteor-mango';
@@ -28,7 +28,6 @@ const MEMBERS_SCHEMA = {username: String, groups: [{_id: String, name: String}]}
 const Groups = new Mango('Groups', {
     schema: GROUPS_SCHEMA,
     toEmbedded: (newDoc) => pick(newDoc, '_id', 'name'),
-    triggerFields: ['name'],
 });
 const Members = new Mango('Members', {schema: MEMBERS_SCHEMA});
 
