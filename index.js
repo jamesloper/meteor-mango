@@ -53,8 +53,8 @@ class Mango {
 				return EJSON.equals(oldValue, newValue);
 			});
 			if (triggersRelationalUpdate) {
-				let embedded = this.toEmbedded(r.newDoc);
-				this._emitter.emit('onChange', r.newDoc._id, embedded);
+				let embeddedDoc = this.toEmbedded(r.newDoc);
+				this._emitter.emit('onChange', r.newDoc._id, embeddedDoc);
 			}
 		});
 		return count;
@@ -68,7 +68,7 @@ class Mango {
 		this._emitter.emit('onAfterInsert', doc);
 
 		let res = {id, doc};
-		if (this.toEmbedded) res.embedded = this.toEmbedded(doc);
+		if (this.toEmbedded) res.embeddedDoc = this.toEmbedded(doc);
 
 		return res;
 	}

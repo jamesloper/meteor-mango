@@ -22,19 +22,15 @@ In this example, we trigger a sync upon changes to the Artist's `name`. Note tha
 import Mango from 'meteor-mango';
 import {pick, isEqual} from 'underscore';
 
+const GROUPS_SCHEMA = {name: String, addedOn: Date};
+const MEMBERS_SCHEMA = {username: String, groups: [{_id: String, name: String}]};
+
 const Groups = new Mango('Groups', {
-    schema: {name: String, addedOn: Date},
+    schema: GROUPS_SCHEMA,
     toEmbedded: (newDoc) => pick(newDoc, '_id', 'name'),
     triggerFields: ['name'],
-    comparisonFn: EJSON.equals, // optional
 });
-
-const Members = new Mango('Members', {
-    schema: {
-        username: String,
-        groups: [{_id: String, name: String}],
-    },
-});
+const Members = new Mango('Members', {schema: MEMBERS_SCHEMA});
 
 Groups.autorun({
     onChange(id, embeddedDoc) {
@@ -44,17 +40,12 @@ Groups.autorun({
         Members.update({'groups._id': id}, {$pull: {'groups': {'_id': id}}}, {multi:true});
     }
 });
+```
 
-// Test this setup
-let {id} = Groups.insert({
-    name: 'Foreskin',
-    createdOn: new Date(),
-});
+When we run this code, the groups update will automatically trigger the `onChange` event declared in `autorun`
 
-let member = Members.insert({
-    name: 'Bob',
-    groups: [group],
-});
-
+```javascript
+let {id, embeddedDoc} = Groups.insert({name: 'Foreskin', createdOn: new Date()});
+let {doc} = Members.insert({name: 'Bob', groups: [embeddedDoc]});
 Groups.update(groupId, {$set: {'name': 'Threeskin'}});
 ```
