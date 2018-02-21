@@ -3,17 +3,6 @@
 ### Installation
 To add to your project, just run `meteor npm install --save meteor-mango`
 
-### Example
-```javascript
-import Mango from 'meteor-mango';
-const Groups = new Mango('Groups', {
-    _id: String,
-    name: String,
-    countMembers: Number,
-});
-Groups.insert({name: 'Dinosaur Eating Club'});
-```
-
 ### Relational Example
 
 In this example, we trigger a sync upon changes to the Group's `name`.
