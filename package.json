@@ -1,11 +1,11 @@
 {
   "name": "meteor-mango",
   "version": "1.0.0",
-  "description": "",
+  "description": "Enforces dicipline at the database level to ensure data integrity. Enhances mongo collections with wrapped methods. Replaces collection2, simple-schema and collection-hooks.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "James Loper",
+  "license": "MIT"
 }
