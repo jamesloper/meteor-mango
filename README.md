@@ -1,11 +1,10 @@
 **Meteor Mango** is a simple, lightweight alternative to collection-hooks and can auto sync relational data. Say hello to a more maintainable codebase. However collection-hooks can cause spaghetti code, so don't overuse them!
 
-### Installation
 To add to your project, just run `meteor npm install --save meteor-mango`
 
 ### Relational Example
 
-In this example, we trigger a sync upon changes to the Group's `name`.
+In this example, we update `Members` when a `Group`'s embedded doc is changed.
 
 ```javascript
 import Mango from 'meteor-mango';
