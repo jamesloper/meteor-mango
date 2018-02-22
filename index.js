@@ -1,11 +1,9 @@
 const {Mongo} = require('meteor/mongo');
-const {extend, keys} = require('underscore');
 const {EJSON} = require('meteor/ejson');
-const {LocalCollection} = require('meteor/minimongo');
 const EventEmitter = require('events');
 const {requireUpdate} = require('./mongo-validate');
+const {simulateUpdate} = require('./mongo-simulate');
 
-const Test = new LocalCollection(null);
 
 class Mango {
 	constructor(collectionName, {toEmbedded}) {
@@ -23,29 +21,14 @@ class Mango {
 		this.toEmbedded = toEmbedded;
 	}
 
-	simulateUpdate(doc, query, modifier) {
-		if (keys(modifier).find(k => k.includes('$'))) {
-			Test.insert(doc);
-			Test.update(query, modifier);
-			let res = Test.findOne(doc._id);
-			Test.remove(doc._id);
-			return res;
-		}
-
-		// more efficient
-		let clonedDoc = EJSON.clone(doc);
-		LocalCollection._modify(doc, modifier);
-		return clonedDoc;
-	}
-
 	update(query, modifier = {}, params = {}) {
 		if (typeof query === 'string') query = {_id: query};
 		requireUpdate(modifier);
 
 		const docs = this.collection.find(query, {limit: params.multi ? null : 1}).map(oldDoc => {
-			let newDoc = this.simulateUpdate(oldDoc, query, modifier);
+			let newDoc = simulateUpdate(oldDoc, query, modifier);
 			let res = {oldDoc, newDoc, modifier};
-			if (this.toEmbedded) extend(res, {
+			if (this.toEmbedded) Object.assign(res, {
 				oldEmbeddedDoc: this.toEmbedded(oldDoc),
 				newEmbeddedDoc: this.toEmbedded(newDoc),
 			});
@@ -53,7 +36,7 @@ class Mango {
 		});
 
 		if (docs.length === 0 && params.upsert) { // handle an upsert
-			this.insert(this.simulateUpdate(query, query, modifier));
+			this.insert(simulateUpdate(query, query, modifier));
 			return 1;
 		}
 
@@ -92,7 +75,7 @@ class Mango {
 	}
 
 	autorun({onChange, onRemove}) {
-		if (!this.toEmbedded) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no #toEmbedded function');
+		if (!this.toEmbedded) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no toEmbedded function');
 		this._emitter.addListener('onChange', onChange);
 		this.onAfterRemove(onRemove);
 	}
