@@ -4,7 +4,7 @@ To add to your project, just run `meteor npm install --save meteor-mango`
 
 ### Relational Example
 
-In this example, we update `Members` when a `Group` is changed.
+In this test database, members can join groups, so we store a list of groups on the member. This is called embedding. However, if you update the name in the `Groups` collection, by default, the duplicated names in the embedded arrays will keep the old name. With `meteor-mango` we can fix that with less code, and in a less error-prone way than doing it mannually.
 
 ```javascript
 import Mango from 'meteor-mango';
