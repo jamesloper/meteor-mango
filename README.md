@@ -10,16 +10,11 @@ In this test database, members can join groups, so we store a list of groups on 
 import Mango from 'meteor-mango';
 import {pick, isEqual} from 'underscore';
 
-// Define schemas for two collections
-const GROUPS_SCHEMA = {_id: String, name: String, addedOn: Date};
-const MEMBERS_SCHEMA = {_id: String, username: String, groups: [{_id: String, name: String}]};
-
 // Create two sexy mangos
+const Members = new Mango('Members');
 const Groups = new Mango('Groups', {
-    schema: GROUPS_SCHEMA,
     toEmbedded: (newDoc) => pick(newDoc, '_id', 'name'),
 });
-const Members = new Mango('Members', {schema: MEMBERS_SCHEMA});
 
 // Attach autorun functions to Groups
 Groups.autorun({
