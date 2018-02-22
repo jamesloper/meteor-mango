@@ -1,6 +1,6 @@
-**Meteor Mango** is a simple, lightweight alternative to collection-hooks and can auto sync relational data. Say hello to a more maintainable codebase. However collection-hooks can cause spaghetti code, so don't overuse them!
+`meteor npm install --save meteor-mango`
 
-To add to your project, just run `meteor npm install --save meteor-mango`
+**Meteor Mango** is a simple, lightweight alternative to collection-hooks and can auto sync relational data. Say hello to a more maintainable codebase. However collection-hooks can cause spaghetti code, so don't overuse them!
 
 ### Relational Example
 
@@ -38,4 +38,14 @@ Because you configured a toEmbedded function and attached an autorun, the update
 let {id, embeddedDoc} = Groups.insert({name: 'Foreskin', createdOn: new Date()});
 Members.insert({name: 'Bob', groups: [embeddedDoc]});
 Groups.update(id, {$set: {'name': 'Threeskin'}});
+```
+
+### Schema Enforcement Aka Collection2 (in progress)
+
+Did you know mango also replaces collection2? Is there anything Mango can't do?!
+
+```javascript
+const Groups = new Mango('Groups', {
+    schema: {_id: String, name: String, addedOn: Date},
+});
 ```
