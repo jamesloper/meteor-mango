@@ -6,7 +6,7 @@ const EventEmitter = require('events');
 const {requireUpdate} = require('./mongo-validate');
 
 class Mango {
-	constructor(collectionName, {toEmbedded, triggerFields}) {
+	constructor(collectionName, {toEmbedded}) {
 		this.collection = new Mongo.Collection(collectionName);
 		this.findOne = this.collection.findOne;
 		this.find = this.collection.find;
@@ -18,7 +18,6 @@ class Mango {
 		this.onBeforeRemove = (fn) => this._emitter.addListener('beforeRemove', fn);
 		this.onAfterRemove = (fn) => this._emitter.addListener('afterRemove', fn);
 		this.toEmbedded = toEmbedded;
-		this.triggerFields = triggerFields || [];
 	}
 
 	simulateUpdate(doc, update) {
@@ -34,7 +33,7 @@ class Mango {
 			let newDoc = this.simulateUpdate(oldDoc, update);
 			let res = {oldDoc, newDoc, update};
 			if (this.toEmbedded) extend(res, {
-				oldEmbeddedDoc: this.toEmbedded(r.oldDoc),
+				oldEmbeddedDoc: this.toEmbedded(oldDoc),
 				newEmbeddedDoc: this.toEmbedded(newDoc),
 			});
 			return res;
@@ -81,8 +80,6 @@ class Mango {
 
 	autorun({onChange, onRemove}) {
 		if (!this.toEmbedded) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no #toEmbedded function');
-		if (!this.triggerFields.length) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no trigger fields');
-
 		this._emitter.addListener('onChange', onChange);
 		this.onAfterRemove(onRemove);
 	}
