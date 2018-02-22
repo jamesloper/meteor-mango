@@ -17,13 +17,11 @@ const Groups = new Mango('Groups', {
 });
 
 // Attach autorun functions to Groups
-Groups.autorun({
-    onChange(id, embeddedDoc) {
-        Members.update({'groups._id': id}, {$set: {'groups.$': embeddedDoc}}, {multi:true});
-    },
-    onRemove(id) {
-        Members.update({'groups._id': id}, {$pull: {'groups': {'_id': id}}}, {multi:true});
-    }
+Groups.onEmbeddedChange((id, embeddedDoc) => {
+    Members.update({'groups._id': id}, {$set: {'groups.$': embeddedDoc}}, {multi:true});
+});
+Groups.onAfterRemove(id => {
+    Members.update({'groups._id': id}, {$pull: {'groups': {'_id': id}}}, {multi:true});
 });
 ```
 

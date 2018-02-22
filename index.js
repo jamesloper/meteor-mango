@@ -47,7 +47,7 @@ class Mango {
 
 			// Trigger relational update if any of the trigger fields's value has changed
 			if (this.toEmbededd && !EJSON.equals(r.oldEmbeddedDoc, r.newEmbeddedDoc)) {
-				this._emitter.emit('onChange', r.newDoc._id, r.newEmbeddedDoc);
+				this._emitter.emit('embeddedChange', r.newDoc._id, r.newEmbeddedDoc);
 			}
 		});
 		return count;
@@ -74,10 +74,9 @@ class Mango {
 		return count;
 	}
 
-	autorun({onChange, onRemove}) {
-		if (!this.toEmbedded) throw new Meteor.Error(500, 'Attempted to attach autorun on a Mango that has no toEmbedded function');
-		this._emitter.addListener('onChange', onChange);
-		this.onAfterRemove(onRemove);
+	onEmbeddedChange(fn) {
+		if (!this.toEmbedded) throw new Meteor.Error(500, 'Attempted to attach onEmbeddedChange on a mango that has no toEmbedded configured');
+		this._emitter.addListener('embeddedChange', fn);
 	}
 }
 
